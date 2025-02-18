@@ -1,0 +1,93 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import mean_squared_error
+
+# Define the file path for the dataset
+file_path = r'C:\Users\Carter Fitzgerald\Pictures\abalone.csv'
+
+# Load the dataset from the specified file path into a DataFrame
+df = pd.read_csv(file_path)
+
+# Preprocess the data
+# Encode the categorical 'Sex' column using label encoding (converts categories to numbers)
+le = LabelEncoder()
+df['Sex'] = le.fit_transform(df['Sex'])
+
+# Define the features (X) and target variable (y)
+X = df.drop(columns=['Rings'])  # Features are all columns except 'Rings'
+y = df['Rings']  # Target variable is the 'Rings' column
+
+# Scale the features to have mean 0 and standard deviation 1
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Split the data into training and temporary sets (70% train, 30% temp)
+X_train, X_temp, y_train, y_temp = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
+# Further split the temporary set into validation and test sets (10% test, 20% validation)
+# 0.33 x 0.3 = ~0.1, meaning 10% of the original data is used for testing
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.33, random_state=42)  # 0.33 x 0.3 = 0.1
+
+# Define different feature sets to experiment with different input configurations
+feature_sets = {
+    'set1': ['Sex', 'Length', 'Diameter', 'Height', 'Whole weight', 'Shucked weight'],
+    'set2': ['Sex', 'Length', 'Diameter', 'Height'],
+    'set3': ['Sex', 'Whole weight', 'Shucked weight', 'Viscera weight', 'Shell weight'],
+    'set4': ['Length', 'Diameter', 'Height', 'Whole weight', 'Shucked weight', 'Viscera weight', 'Shell weight']
+}
+
+# Define a list of parameter configurations for the neural network
+parameters = [
+    {'hidden_layer_sizes': (50,), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 'auto', 'feature_set': 'set1'},
+    {'hidden_layer_sizes': (100,), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'batch_size': 32, 'feature_set': 'set2'},
+    {'hidden_layer_sizes': (50, 50), 'activation': 'tanh', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 64, 'feature_set': 'set3'},
+    {'hidden_layer_sizes': (100, 50), 'activation': 'tanh', 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'batch_size': 64, 'feature_set': 'set4'},
+    {'hidden_layer_sizes': (50, 50, 50), 'activation': 'logistic', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 32, 'feature_set': 'set1'},
+    {'hidden_layer_sizes': (100, 100), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'batch_size': 64, 'feature_set': 'set2'},
+    {'hidden_layer_sizes': (50, 100, 50), 'activation': 'tanh', 'learning_rate': 'adaptive', 'learning_rate_init': 0.005, 'batch_size': 32, 'feature_set': 'set3'},
+    {'hidden_layer_sizes': (100, 50, 25), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'batch_size': 64, 'feature_set': 'set4'},
+    {'hidden_layer_sizes': (200,), 'activation': 'logistic', 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'batch_size': 'auto', 'feature_set': 'set1'},
+    {'hidden_layer_sizes': (100, 100, 100), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'batch_size': 32, 'feature_set': 'set2'},
+    {'hidden_layer_sizes': (100, 75), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.005, 'batch_size': 64, 'feature_set': 'set3'},
+    {'hidden_layer_sizes': (150, 100, 50), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'batch_size': 32, 'feature_set': 'set4'},
+    {'hidden_layer_sizes': (200, 100), 'activation': 'tanh', 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'batch_size': 32, 'feature_set': 'set2'},
+    {'hidden_layer_sizes': (50, 75, 50), 'activation': 'logistic', 'learning_rate': 'adaptive', 'learning_rate_init': 0.005, 'batch_size': 64, 'feature_set': 'set1'},
+    {'hidden_layer_sizes': (100, 100, 50, 25), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 64, 'feature_set': 'set3'}
+]
+
+# Results storage for later comparison
+results = []
+
+# Loop through each parameter configuration
+for params in parameters:
+    # Initialize the MLPRegressor with the specified parameters
+    mlp_regressor = MLPRegressor(hidden_layer_sizes=params['hidden_layer_sizes'],
+                                 activation=params['activation'],
+                                 learning_rate=params['learning_rate'],
+                                 learning_rate_init=params['learning_rate_init'],
+                                 batch_size=params['batch_size'],
+                                 verbose=True, # Set to True to print out training process information
+                                 random_state=33) # Random seed for reproducibility
+    # Train the model using the training data
+    mlp_regressor.fit(X_train, y_train)
+    
+    # Predict the target variable for the training data
+    y_train_pred = mlp_regressor.predict(X_train)
+    # Predict the target variable for the test data
+    y_test_pred = mlp_regressor.predict(X_test)
+    
+    # Calculate the Mean Squared Error (MSE) for training and test predictions
+    train_mse = mean_squared_error(y_train, y_train_pred)
+    test_mse = mean_squared_error(y_test, y_test_pred)
+    
+    # Store the parameters and the corresponding MSE scores in the results list
+    results.append({
+        **params, # Unpack the parameters into the result dictionary
+        'train_mse': train_mse, # Add training MSE to the result
+        'test_mse': test_mse # Add test MSE to the result
+    })
+
+# Print out the results for each parameter configuration
+for result in results:
+    print(result)

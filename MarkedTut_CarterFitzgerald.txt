@@ -1,0 +1,122 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+
+# Define the file path for the dataset
+file_path = r'C:\Users\Carter Fitzgerald\Pictures\card.csv'
+
+# Load the dataset from the specified file path into a DataFrame
+# Assuming the CSV file has no header row, so we manually add headers
+df = pd.read_csv(file_path, header=None)
+
+# Set the correct headers manually, as there was no header in the CSV
+df.columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 
+              'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 
+              'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 
+              'AC', 'AD', 'AE']
+
+# Verify that the columns are now correctly named by displaying the first few rows
+print(df.head())
+
+# Preprocess the data
+# Separate the features (X) from the target variable (y)
+# 'AE' is assumed to be the column that contains the fraud labels
+X = df.drop(columns=['AE'])  # Features are all columns except 'AE'
+y = df['AE'] # Target variable is the 'AE' column
+
+# Normalize the 'Amount' (column 'AD') and 'Time' (column 'A') features
+# Scaling these features is important for training neural networks
+scaler = StandardScaler()
+X[['AD', 'A']] = scaler.fit_transform(X[['AD', 'A']])
+
+# Split the data into training and temporary sets (70% train, 30% temp)
+X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Further split the temporary set into validation and test sets (10% test, 20% validation)
+# 0.33 x 0.3 = ~0.1, meaning 10% of the original data is used for testing
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.33, random_state=42)  # 0.33 x 0.3 = 0.1
+
+# Initialize the Multi-layer Perceptron classifier with default parameters
+mlp_classifier = MLPClassifier(verbose=True, random_state=33)
+# Train the model using the training data
+mlp_classifier.fit(X_train, y_train)
+
+# Evaluate the model
+# Calculate the accuracy on the training set
+train_score = mlp_classifier.score(X_train, y_train)
+# Calculate the accuracy on the validation set
+val_score = mlp_classifier.score(X_val, y_val)
+# Calculate the accuracy on the test set
+test_score = mlp_classifier.score(X_test, y_test)
+
+# Print the training, validation, and test scores
+print("Training score of MLP:", train_score)
+print("Validation score of MLP:", val_score)
+print("Test score of MLP:", test_score)
+
+# Define a list of parameter configurations for experimenting with the neural network
+parameters = [
+    # Configuration 1
+    {'hidden_layer_sizes': (50,), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 'auto'},
+    
+    # Configuration 2
+    {'hidden_layer_sizes': (100,), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'batch_size': 32},
+    
+    # Configuration 3
+    {'hidden_layer_sizes': (50, 50), 'activation': 'tanh', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 64},
+    
+    # Configuration 4
+    {'hidden_layer_sizes': (100, 50), 'activation': 'tanh', 'learning_rate': 'adaptive', 'learning_rate_init': 0.01, 'batch_size': 64},
+    
+    # Configuration 5
+    {'hidden_layer_sizes': (50, 50, 50), 'activation': 'logistic', 'learning_rate': 'constant', 'learning_rate_init': 0.001, 'batch_size': 32},
+    
+    # Configuration 6
+    {'hidden_layer_sizes': (100, 100), 'activation': 'relu', 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'batch_size': 64},
+    
+    # Configuration 7
+    {'hidden_layer_sizes': (50, 100, 50), 'activation': 'tanh', 'learning_rate': 'adaptive', 'learning_rate_init': 0.005, 'batch_size': 32},
+    
+    # Configuration 8
+    {'hidden_layer_sizes': (100, 50, 25), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'batch_size': 64},
+    
+    # Configuration 9
+    {'hidden_layer_sizes': (200,), 'activation': 'logistic', 'learning_rate': 'constant', 'learning_rate_init': 0.01, 'batch_size': 'auto'},
+    
+    # Configuration 10
+    {'hidden_layer_sizes': (100, 100, 100), 'activation': 'relu', 'learning_rate': 'adaptive', 'learning_rate_init': 0.001, 'batch_size': 32}
+]
+
+# Results storage for later comparison
+results = []
+
+# Loop through each parameter configuration
+for params in parameters:
+    # Initialize the MLPClassifier with the specified parameters
+    mlp_classifier = MLPClassifier(hidden_layer_sizes=params['hidden_layer_sizes'],
+                                   activation=params['activation'],
+                                   learning_rate=params['learning_rate'],
+                                   learning_rate_init=params['learning_rate_init'],
+                                   batch_size=params['batch_size'],
+                                   verbose=True, # Set to True to print out training process information
+                                   random_state=33) # Random seed for reproducibility
+    # Train the model using the training data
+    mlp_classifier.fit(X_train, y_train)
+    
+    # Evaluate the model
+    # Calculate the accuracy on the training set
+    train_score = mlp_classifier.score(X_train, y_train)
+    # Calculate the accuracy on the test set
+    test_score = mlp_classifier.score(X_test, y_test)
+    
+    # Store the parameters and the corresponding accuracy scores in the results list
+    results.append({
+        **params, # Unpack the parameters into the result dictionary
+        'train_score': train_score, # Add training accuracy to the result
+        'test_score': test_score # Add test accuracy to the result
+    })
+
+# Print out the results for each parameter configuration
+for result in results:
+    print(result)
